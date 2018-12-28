@@ -1,10 +1,12 @@
 #!/bin/bash
 
-#######################
-##                   ##
-##   Version 0.01    ##
-##                   ##
-#######################
+###################################
+##                               ##
+##         Version  0.01         ##
+##                               ##
+##   fail2ban-varnish-ipblock    ##
+##                               ##
+###################################
 
 ## --- some preforward setting
 # working even if somebody run "sh larnmvp.sh"
@@ -93,7 +95,9 @@ mv -f /opt/fail2ban/new_ip_2.txt $v_new
 # cleanup all the temparary files
 rm -f /opt/fail2ban/*.txt
 
+
 ## --- make varnish reload without losing caching data
+## --- Using file metohd
 # get the first line which line is used now, at least there will be one active
 # nvcl_use=$($VARNISHADM vcl.list | sed '/^[[:space:]]*$/d' | awk '{sub(/([^ ]+ +){3}/,"")}1' | head -1 )
 nvcl_use=$( $VARNISHADM vcl.list | awk ' /^active/ { print $4 } ' )
@@ -106,12 +110,39 @@ else
 	sed -i '1 i\$new_vcl' $backuptime
 fi
 # load the vcl config file to the memory, use new vcl config file
-$VARNISHADM vcl.load $new_vcl ${varnishdefault}
+$VARNISHADM vcl.load ${new_vcl} ${varnishdefault}
 # @https://stackoverflow.com/questions/26508138/split-a-sentence-using-space-in-bash-script
 # use new vcl config file
-$VARNISHADM vcl.use $new_vcl
+$VARNISHADM vcl.use ${new_vcl}
 # discard the old running vcl config file
 $VARNISHADM vcl.discard $nvcl_use
+
+## --- Using complied method
+# if want to use what was compiled and now running, but not using the file-method to load new one config and comple again
+nvcl_use=$( $VARNISHADM vcl.list | awk ' /^active/ { print $4 } ' )
+new_vcl="varnish_${TIME}"
+# check what vcl is used now, and we make a new file and add the using vcl before the first line of file
+if [[ ! -e $backuptime ]] || [[ $nvcl_use == "boot" ]]; then
+	touch $backuptime && echo $nvcl_use >> $backuptime
+	sed -i '1 i\$new_vcl' $backuptime
+else
+	sed -i '1 i\$new_vcl' $backuptime
+fi
+# save new file
+${VARNISHADM} vcl.show ${nvcl_use} > ${varnishdefault}
+# load the vcl config file to the memory, use new vcl config file
+$VARNISHADM vcl.load ${new_vcl} ${varnishdefault}
+# @https://stackoverflow.com/questions/26508138/split-a-sentence-using-space-in-bash-script
+# use new vcl config file
+$VARNISHADM vcl.use ${new_vcl}
+# discard the old running vcl config file
+$VARNISHADM vcl.discard $nvcl_use
+# # recompling 
+# nvcl_complied_content=$( ${VARNISHADM} vcl.show ${nvcl_use} | sed 's/["\]/\\\\&/g' | sed ':a;N;$!ba;s/\n/\\\\n/g' )
+# # it have the same effect with vcl.load
+# $VARNISHADM vcl.inline ${new_vcl} '"'${nvcl_complied_content}'"' > /dev/null 2>&1
+# vstring=$( varnishadm -n aeroflow vcl.list | grep ${new_vcl} )
+# $VARNISHADM vcl.use ${new_vcl}
 
 ## --- restart all the services
 # do not restart or reload varnish
