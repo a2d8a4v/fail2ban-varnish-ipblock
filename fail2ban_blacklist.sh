@@ -98,24 +98,24 @@ rm -f /opt/fail2ban/*.txt
 
 ## --- make varnish reload without losing caching data
 ## --- Using file metohd
-# get the first line which line is used now, at least there will be one active
-# nvcl_use=$($VARNISHADM vcl.list | sed '/^[[:space:]]*$/d' | awk '{sub(/([^ ]+ +){3}/,"")}1' | head -1 )
-nvcl_use=$( $VARNISHADM vcl.list | awk ' /^active/ { print $4 } ' )
-new_vcl="varnish_${TIME}"
-# check what vcl is used now, and we make a new file and add the using vcl before the first line of file
-if [[ ! -e $backuptime ]] || [[ $nvcl_use == "boot" ]]; then
-	touch $backuptime && echo $nvcl_use >> $backuptime
-	sed -i '1 i\$new_vcl' $backuptime
-else
-	sed -i '1 i\$new_vcl' $backuptime
-fi
-# load the vcl config file to the memory, use new vcl config file
-$VARNISHADM vcl.load ${new_vcl} ${varnishdefault}
-# @https://stackoverflow.com/questions/26508138/split-a-sentence-using-space-in-bash-script
-# use new vcl config file
-$VARNISHADM vcl.use ${new_vcl}
-# discard the old running vcl config file
-$VARNISHADM vcl.discard $nvcl_use
+# # get the first line which line is used now, at least there will be one active
+# # nvcl_use=$($VARNISHADM vcl.list | sed '/^[[:space:]]*$/d' | awk '{sub(/([^ ]+ +){3}/,"")}1' | head -1 )
+# nvcl_use=$( $VARNISHADM vcl.list | awk ' /^active/ { print $4 } ' )
+# new_vcl="varnish_${TIME}"
+# # check what vcl is used now, and we make a new file and add the using vcl before the first line of file
+# if [[ ! -e $backuptime ]] || [[ $nvcl_use == "boot" ]]; then
+# 	touch $backuptime && echo $nvcl_use >> $backuptime
+# 	sed -i '1 i\$new_vcl' $backuptime
+# else
+# 	sed -i '1 i\$new_vcl' $backuptime
+# fi
+# # load the vcl config file to the memory, use new vcl config file
+# $VARNISHADM vcl.load ${new_vcl} ${varnishdefault}
+# # @https://stackoverflow.com/questions/26508138/split-a-sentence-using-space-in-bash-script
+# # use new vcl config file
+# $VARNISHADM vcl.use ${new_vcl}
+# # discard the old running vcl config file
+# $VARNISHADM vcl.discard $nvcl_use
 
 ## --- Using complied method
 # if want to use what was compiled and now running, but not using the file-method to load new one config and comple again
